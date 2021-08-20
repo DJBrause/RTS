@@ -11,16 +11,12 @@ class Player(pygame.sprite.Sprite):
         self.coord_y = y
         self.active = False
         self.ship_collision = False
-        self.colliding_element = None
         self.list_of_ships = []
         self.waypoints = []
-        self.wp_modifier_x = 0
-        self.wp_modifier_y = 0
         super().__init__()
         self.og_image = pygame.image.load(r'graphics\fighter.png').convert_alpha()
         self.image = pygame.transform.scale(self.og_image, (16, 16))
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
-        self.wp_modifier = 0
 
     def test(self):
         print(f"len list = {len(self.waypoints)}")
@@ -64,8 +60,8 @@ class Player(pygame.sprite.Sprite):
             wp_vicinity = 30
 
             '''dopracować'''
-            x_move = (self.active_waypoint[0] - self.coord_x) + random.randrange(-35, 35, 5)
-            y_move = (self.active_waypoint[1] - self.coord_y) + random.randrange(-35, 35, 5)
+            x_move = (self.active_waypoint[0] - self.coord_x) #+ random.randrange(-35, 35, 5)
+            y_move = (self.active_waypoint[1] - self.coord_y) #+ random.randrange(-35, 35, 5)
             distance = abs(x_move + y_move)
             if distance > limit:
                 reduction += (abs(distance)-limit)
@@ -79,7 +75,6 @@ class Player(pygame.sprite.Sprite):
             elif self.dist <= wp_vicinity:
                 if len(self.waypoints) == 1:
                     self.final_leg()
-
                 else:
                     self.go_to_next_wp()
 
@@ -105,11 +100,7 @@ class Player(pygame.sprite.Sprite):
     def go_to_next_wp(self):
         if len(self.waypoints) > 1:
             self.waypoints.remove(self.waypoints[0])
-            #self.waypoints.remove(self.active_waypoint)
-            print(len(self.waypoints))
             self.active_waypoint = self.waypoints[0]
-            self.active_waypoint = ((self.active_waypoint[0] + self.wp_modifier_x),
-                                    (self.active_waypoint[1] + self.wp_modifier_y))
             self.rotate()
 
     def change_wp_upon_collision(self):
