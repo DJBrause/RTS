@@ -62,7 +62,7 @@ class Player(pygame.sprite.Sprite):
             '''dopracować'''
             x_move = (self.active_waypoint[0] - self.coord_x) #+ random.randrange(-35, 35, 5)
             y_move = (self.active_waypoint[1] - self.coord_y) #+ random.randrange(-35, 35, 5)
-            distance = abs(x_move + y_move)
+            distance = abs(int(x_move + y_move))
             if distance > limit:
                 reduction += (abs(distance)-limit)
             ''''''

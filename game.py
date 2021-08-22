@@ -2,12 +2,15 @@ import pygame
 import random
 from ship_class import Player
 from asteroid_class import Asteroid
+from projectile_class import Projectile
 
 pygame.init()
 window_width = 1200
 window_height = 900
 screen = pygame.display.set_mode((window_width, window_height))
 list_of_ships = []
+list_of_asteroids = []
+list_of_projectiles = []
 scroll = [0, 0]
 
 
@@ -25,7 +28,7 @@ class Station(pygame.sprite.Sprite):
     def update(self):
         pass
 
-# Two super junky functions. To be replaced with dynamic ship generation.
+# To be replaced with dynamic ship generation.
 def ship_generator():
     for i in range(3):
         x = random.randint(0, window_width)
@@ -34,13 +37,30 @@ def ship_generator():
         player.add(Player(x, y))
         list_of_ships.append(player)
 
+
 def add_ship_list_to_ships():
     for sprite in list_of_ships:
         for ship in sprite.sprites():
             ship.list_of_ships = list_of_ships
 
+
+def asteroid_generator():
+    for i in range(50):
+        x = random.randint(-window_width, window_width)
+        y = random.randint(-window_height, window_height)
+        asteroid = pygame.sprite.GroupSingle()
+        asteroid.add(Asteroid(x, y))
+        list_of_asteroids.append(asteroid)
+
+
+def projectile_generator(x,y,target):
+    shot = pygame.sprite.GroupSingle(Projectile(x, y, target))
+    list_of_projectiles.append(shot)
+
+
 ship_generator()
 add_ship_list_to_ships()
+asteroid_generator()
 
 """TEST"""
 
@@ -49,10 +69,6 @@ station.add(Station(window_width/3, window_height/2))
 
 station2 = pygame.sprite.GroupSingle()
 station2.add(Station(window_width/2, (window_height/2)*-1))
-
-
-asteroid = pygame.sprite.GroupSingle()
-asteroid.add(Asteroid(random.randint(0, window_width), random.randint(0, window_height)))
 
 """TEST"""
 
@@ -82,12 +98,14 @@ def main():
                     forward_wp_to_active_ship_list(event.pos)
 
                 else:
+                    pewpew(event.pos)
                     waypoint = event.pos
                     forward_wp_to_active_ship(waypoint)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 click_pos = event.pos
                 collision_check(click_pos)
+
                 selection_box_start = click_pos
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -102,21 +120,34 @@ def main():
             selection = pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(selection_box_start[0], selection_box_start[1]
                                                                           , width, height), 2)
         add_scroll_to_ship_pos()
-        draw_ships()
+        draw_objects()
+        remove_destroyed_objects()
 
         #################
         station.draw(screen)
         station2.draw(screen)
-        asteroid.draw(screen)
         #################
         pygame.display.update()
         clock.tick(60)  # <-- ogranicza program do 60 fps
 
 
-def draw_ships():
+def draw_objects():
     for ship in list_of_ships:
         ship.draw(screen)
         ship.update()
+    for asteroid in list_of_asteroids:
+        asteroid.draw(screen)
+        asteroid.update()
+    for projectile in list_of_projectiles:
+        projectile.draw(screen)
+        projectile.update()
+
+
+def remove_destroyed_objects():
+    for projectile in list_of_projectiles:
+        for projectile_sprite in projectile.sprites():
+            if projectile_sprite.explosion_end is True:
+                list_of_projectiles.remove(projectile)
 
 
 def add_scroll_to_ship_pos():
@@ -128,9 +159,6 @@ def add_scroll_to_ship_pos():
         rectangle.rect.x -= scroll[0]
         rectangle.rect.y -= scroll[1]
 
-    for rectangle in asteroid.sprites():
-        rectangle.rect.x -= scroll[0]
-        rectangle.rect.y -= scroll[1]
     ###################################
 
     for sprite in list_of_ships:
@@ -147,9 +175,23 @@ def add_scroll_to_ship_pos():
                 new_waypoint = (coord_x, coord_y)
                 new_waypoints.append(new_waypoint)
             rectangle_ship.waypoints = new_waypoints
-
             if rectangle_ship.active_waypoint is not None:
                 rectangle_ship.active_waypoint = ((rectangle_ship.active_waypoint[0] - scroll[0]), (rectangle_ship.active_waypoint[1] - scroll[1]))
+
+    for sprite in list_of_asteroids:
+        for asteroid_rectangle in sprite.sprites():
+            asteroid_rectangle.rect.x -= scroll[0]
+            asteroid_rectangle.rect.y -= scroll[1]
+
+    for projectile in list_of_projectiles:
+        for projectile_sprite in projectile.sprites():
+            projectile_sprite.coord_x -= scroll[0]
+            projectile_sprite.coord_y -= scroll[1]
+            new_target_x = projectile_sprite.target[0]
+            new_target_y = projectile_sprite.target[1]
+            new_target_x -= scroll[0]
+            new_target_y -= scroll[1]
+            projectile_sprite.target = (new_target_x, new_target_y)
 
 
 def forward_wp_to_active_ship(wp):
@@ -175,20 +217,40 @@ def collision_check(rect):
             for item in ship.sprites():
                 if item.rect.collidepoint(rect):
                     item.activate_ship()
+
                 else:
                     item.deactivate_ship()
+
     elif type(rect) == pygame.Rect:
         for ship in list_of_ships:
             for item in ship.sprites():
                 if item.rect.colliderect(rect):
                     item.activate_ship()
+
                 else:
                     item.deactivate_ship()
 
 
+def pewpew(click_pos):
+    active_ships = []
+
+    for ship in list_of_ships:
+        for ship_sprite in ship.sprites():
+            if ship_sprite.active is True:
+                active_ships.append(ship_sprite)
+
+    for asteroid_sprite in list_of_asteroids:
+        for asteroid_obj in asteroid_sprite.sprites():
+            if asteroid_obj.rect.collidepoint(click_pos):
+                for ship in active_ships:
+                    x_cor = int(ship.coord_x)
+                    y_cor = int(ship.coord_y)
+                    projectile_generator(x_cor, y_cor, click_pos)
+                    print(f"pewpew, {x_cor}, {y_cor}")
+
+
 def screen_scrolling():
     global scroll
-
     mouse_pos = pygame.mouse.get_pos()
     if mouse_pos[0] < 20:
         scroll[0] -= 1
