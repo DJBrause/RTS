@@ -1,13 +1,12 @@
 import pygame
 import math
-
-
+import random
 
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, x, y, target):
         self.coord_x, self.coord_y = x, y
         self.initial_coord_x, self.initial_coord_y = self.coord_x, self.coord_y
-        self.target = target
+        self.target = (target[0] + random.randint(0, 40), target[1] + random.randint(0, 40))
         self.speed = 10
         self.rotated = False
         super().__init__()
