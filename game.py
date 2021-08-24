@@ -11,7 +11,13 @@ screen = pygame.display.set_mode((window_width, window_height))
 list_of_ships = []
 list_of_asteroids = []
 list_of_projectiles = []
+active_ships = []
 scroll = [0, 0]
+### For event loop ###
+object_detected = False
+######################
+
+
 
 
 class Station(pygame.sprite.Sprite):
@@ -28,9 +34,10 @@ class Station(pygame.sprite.Sprite):
     def update(self):
         pass
 
+
 # To be replaced with dynamic ship generation.
 def ship_generator():
-    for i in range(3):
+    for i in range(5):
         x = random.randint(0, window_width)
         y = random.randint(0, window_height)
         player = pygame.sprite.GroupSingle()
@@ -77,6 +84,7 @@ background = pygame.transform.scale(background, (1600, 1000))
 
 
 def main():
+    global object_detected
     pygame.display.set_caption("RTS maybe")
     clock = pygame.time.Clock()
     test_font = pygame.font.Font('font/Pixeltype.ttf', 50)
@@ -84,10 +92,15 @@ def main():
     selection_box_start = None
     selection = None
 
+
     while True:
         screen.blit(background, (0, 0))
         screen_scrolling()
+        # Resets object_detected to false value for every frame.
+        object_detected = False
 
+
+        # Event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -98,9 +111,15 @@ def main():
                     forward_wp_to_active_ship_list(event.pos)
 
                 else:
-                    pewpew(event.pos)
-                    waypoint = event.pos
-                    forward_wp_to_active_ship(waypoint)
+                    # Checks if there is any targetable object in click location. If yes, ship moves to engage,
+                    # if not, it continues with regular move.
+                    check_for_targetable_object(event.pos)
+                    if object_detected is True:
+                        engage_target()
+                    elif object_detected is False:
+                        waypoint = event.pos
+                        forward_wp_to_active_ship(waypoint)
+
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 click_pos = event.pos
@@ -131,6 +150,8 @@ def main():
         clock.tick(60)  # <-- ogranicza program do 60 fps
 
 
+# Takes all objects and draws then on the screen in each frame.
+
 def draw_objects():
     for ship in list_of_ships:
         ship.draw(screen)
@@ -143,6 +164,7 @@ def draw_objects():
         projectile.update()
 
 
+# Prevents removed/destroyed objects from being drawn.
 def remove_destroyed_objects():
     for projectile in list_of_projectiles:
         for projectile_sprite in projectile.sprites():
@@ -150,50 +172,58 @@ def remove_destroyed_objects():
                 list_of_projectiles.remove(projectile)
 
 
+# Updates objects position with scroll value.
+
 def add_scroll_to_ship_pos():
+    int_scroll_x = int(scroll[0])
+    int_scroll_y = int(scroll[1])
+
     for rectangle in station.sprites():
-        rectangle.rect.x -= scroll[0]
-        rectangle.rect.y -= scroll[1]
+        rectangle.rect.x -= int_scroll_x
+        rectangle.rect.y -= int_scroll_y
 
     for rectangle in station2.sprites():
-        rectangle.rect.x -= scroll[0]
-        rectangle.rect.y -= scroll[1]
+        rectangle.rect.x -= int_scroll_x
+        rectangle.rect.y -= int_scroll_y
 
     ###################################
 
     for sprite in list_of_ships:
+
         for rectangle_ship in sprite.sprites():
-            rectangle_ship.coord_x -= scroll[0]
-            rectangle_ship.coord_y -= scroll[1]
-            # Updating waypoints
+            rectangle_ship.coord_x -= int_scroll_x
+            rectangle_ship.coord_y -= int_scroll_y
+            # Ship waypoints update
             new_waypoints = []
             for waypoint in rectangle_ship.waypoints:
                 coord_x = waypoint[0]
                 coord_y = waypoint[1]
-                coord_x -= scroll[0]
-                coord_y -= scroll[1]
+                coord_x -= int_scroll_x
+                coord_y -= int_scroll_y
                 new_waypoint = (coord_x, coord_y)
                 new_waypoints.append(new_waypoint)
             rectangle_ship.waypoints = new_waypoints
             if rectangle_ship.active_waypoint is not None:
-                rectangle_ship.active_waypoint = ((rectangle_ship.active_waypoint[0] - scroll[0]), (rectangle_ship.active_waypoint[1] - scroll[1]))
+                rectangle_ship.active_waypoint = ((rectangle_ship.active_waypoint[0] - int_scroll_x),
+                                                  (rectangle_ship.active_waypoint[1] - int_scroll_y))
 
     for sprite in list_of_asteroids:
         for asteroid_rectangle in sprite.sprites():
-            asteroid_rectangle.rect.x -= scroll[0]
-            asteroid_rectangle.rect.y -= scroll[1]
+            asteroid_rectangle.rect.x -= int_scroll_x
+            asteroid_rectangle.rect.y -= int_scroll_y
 
-    for projectile in list_of_projectiles:
+    for projectile in list_of_projectiles:  # Updates both projectile position and target variable.
         for projectile_sprite in projectile.sprites():
-            projectile_sprite.coord_x -= scroll[0]
-            projectile_sprite.coord_y -= scroll[1]
+            projectile_sprite.coord_x -= int_scroll_x
+            projectile_sprite.coord_y -= int_scroll_y
             new_target_x = projectile_sprite.target[0]
             new_target_y = projectile_sprite.target[1]
-            new_target_x -= scroll[0]
-            new_target_y -= scroll[1]
+            new_target_x -= int_scroll_x
+            new_target_y -= int_scroll_y
             projectile_sprite.target = (new_target_x, new_target_y)
 
 
+# Move towards a single waypoint.
 def forward_wp_to_active_ship(wp):
     for ship in list_of_ships:
         for item in ship.sprites():
@@ -202,10 +232,13 @@ def forward_wp_to_active_ship(wp):
                 item.waypoints.append(wp)
 
 
+# Adds additional waypoints to waypoints list.
 def forward_wp_to_active_ship_list(wp):
     for ship in list_of_ships:
         for item in ship.sprites():
             if item.active is True:
+                # Adds new waypoint to the list. If there is a single entry in the waypoints list,
+                # it become the active waypoint.
                 item.waypoints.append(wp)
                 if len(item.waypoints) == 1:
                     item.new_waypoint_keep_list(wp)
@@ -231,22 +264,60 @@ def collision_check(rect):
                     item.deactivate_ship()
 
 
-def pewpew(click_pos):
-    active_ships = []
-
+def populate_active_ship_list():
     for ship in list_of_ships:
         for ship_sprite in ship.sprites():
             if ship_sprite.active is True:
                 active_ships.append(ship_sprite)
 
+
+def move_to_target(click_pos):
+    active_ships.clear()
+    populate_active_ship_list()
+
     for asteroid_sprite in list_of_asteroids:
         for asteroid_obj in asteroid_sprite.sprites():
             if asteroid_obj.rect.collidepoint(click_pos):
                 for ship in active_ships:
-                    x_cor = int(ship.coord_x)
-                    y_cor = int(ship.coord_y)
-                    projectile_generator(x_cor, y_cor, click_pos)
-                    print(f"pewpew, {x_cor}, {y_cor}")
+                    ship.attacking_target = True
+                    ship.target = (asteroid_obj.rect.x, asteroid_obj.rect.y)
+
+
+def check_for_targetable_object(click_pos):
+    global object_detected
+    active_ships.clear()
+    populate_active_ship_list()
+
+    for asteroid in list_of_asteroids:
+        for asteroid_sprite in asteroid.sprites():
+            if asteroid_sprite.rect.collidepoint(click_pos):
+                pass_target_to_active_ships(asteroid_sprite.rect)
+                object_detected = True
+
+
+def pass_target_to_active_ships(target):
+    for ship in active_ships:
+        ship.target = target
+        print(target)
+
+
+def move_to_target_range():
+    pass
+
+
+def orbit_target():
+    pass
+
+
+def engage_target():
+    for ship in active_ships:
+        ship.check_distance(ship.target)
+        if ship.dist <= ship.max_range:
+            x_cor = int(ship.coord_x)
+            y_cor = int(ship.coord_y)
+            projectile_generator(x_cor, y_cor, ship.target)
+            ship.waypoints = []
+
 
 
 def screen_scrolling():

@@ -2,6 +2,7 @@ import pygame
 import math
 
 
+
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, x, y, target):
         self.coord_x, self.coord_y = x, y
@@ -39,7 +40,7 @@ class Projectile(pygame.sprite.Sprite):
 
     def move(self):
         if self.distance > 0:
-            radians = math.atan2(self.target[1] - self.coord_y , self.target[0] - self.coord_x)
+            radians = math.atan2(self.target[1] - self.coord_y, self.target[0] - self.coord_x)
             mov_x = math.cos(radians) * self.speed
             mov_y = math.sin(radians) * self.speed
             self.distance -= 1
