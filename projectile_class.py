@@ -3,12 +3,14 @@ import math
 import random
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, x, y, target):
+    def __init__(self, x, y, target, target_object):
         self.coord_x, self.coord_y = x, y
         self.initial_coord_x, self.initial_coord_y = self.coord_x, self.coord_y
-        self.target = (target[0] + random.randint(0, 40), target[1] + random.randint(0, 40))
+        self.target_object = target_object
+        self.target = (target[0] + random.randint(0, 5), target[1] + random.randint(0, 5))
         self.speed = 10
         self.rotated = False
+        self.target_hit = False
         super().__init__()
         self.og_image = pygame.image.load(r'graphics/laser.png').convert_alpha()
         self.explosion_1 = pygame.image.load(r'graphics/explosion1.png').convert_alpha()
@@ -29,8 +31,10 @@ class Projectile(pygame.sprite.Sprite):
     def explosion_animation(self):
         self.explosion_index += 0.2
         if self.explosion_index >= len(self.explosion):
+
             self.explosion_end = True
             self.explosion_index = 0
+
         self.image = self.explosion[int(self.explosion_index)]
 
     def transformed_image(self):
@@ -46,7 +50,11 @@ class Projectile(pygame.sprite.Sprite):
             self.coord_x += mov_x
             self.coord_y += mov_y
         elif self.distance <= 0 and self.explosion_end is False:
+            if self.target_hit is False:
+                self.target_object.hitpoints -= 50
+                self.target_hit = True
             self.explosion_animation()
+
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
     def rotate(self):

@@ -3,8 +3,9 @@ import math
 import random
 
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+class Ship(pygame.sprite.Sprite):
+    def __init__(self, x, y, side):
+        self.hitpoints = 100
         self.moving_to_wp = False
         self.active_waypoint = None
         self.coord_x = x
@@ -14,7 +15,9 @@ class Player(pygame.sprite.Sprite):
         self.list_of_ships = []
         self.waypoints = []
         self.max_range = 300
+        self.side = side
         self.dist = None
+        self.target_object = None
         self.target = None
         self.attacking_target = False
         self.target_reached = False
@@ -22,15 +25,27 @@ class Player(pygame.sprite.Sprite):
         self.orbit_mode = False
         self.shot_interval = 0
         super().__init__()
-        self.og_image = pygame.image.load(r'graphics\fighter.png').convert_alpha()
-        self.image = pygame.transform.scale(self.og_image, (16, 16))
+        self.og_image_blue = pygame.image.load(r'graphics\fighter.png').convert_alpha()
+        self.og_image_red = pygame.image.load(r'graphics\x_wing.png').convert_alpha()
+        self.image = self.image_choice()
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
     def test(self):
         print(f"len list = {len(self.waypoints)}")
 
-    def transformed_image(self):
-        self.image = pygame.transform.scale(self.og_image, (16, 16))
+    def image_choice(self):
+        if self.side == 'red':
+            self.image = self.og_image_red
+        elif self.side == 'blue':
+            self.image = self.og_image_blue
+        return self.image
+
+    def transformed_image_blue(self):
+        self.image = pygame.transform.scale(self.og_image_blue, (16, 16))
+        return self.image
+
+    def transformed_image_red(self):
+        self.image = pygame.transform.scale(self.og_image_red, (16, 16))
         return self.image
 
     '''Sets the ship into active state where it can react to orders.'''
@@ -62,7 +77,7 @@ class Player(pygame.sprite.Sprite):
             rel_x, rel_y = waypoint_x - (self.rect.x + 51), waypoint_y - self.rect.y
             angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) + 270
 
-            self.image = pygame.transform.rotate(self.transformed_image(), int(angle))
+            self.image = pygame.transform.rotate(self.image_choice(), int(angle))
             self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
     # checks distance between self and destination/waypoint
@@ -76,7 +91,7 @@ class Player(pygame.sprite.Sprite):
         if self.active_waypoint is not None and self.target_reached is False:
             self.check_distance(self.active_waypoint)
             limit = 1200
-            reduction = 100
+            reduction = 50
             wp_vicinity = 30
 
             '''dopracować'''
@@ -105,9 +120,25 @@ class Player(pygame.sprite.Sprite):
 
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
-    # Function to generate an active waypoint in 8 points around the target simulating orbiting.
-    # Will do for now.
+    # orbit_target generates random waypoints around target. orbit_target_2 creates 8 waypoints around the target.
+
     def orbit_target(self):
+        # Swapping rect for tuple
+        # a = self.target.x + self.target.w / 2
+        # b = self.target.y + self.target.h / 2
+        if self.target_object is not None:
+            a = self.target[0] + self.target_object.rect.w / 2
+            b = self.target[1] + self.target_object.rect.h / 2
+            x = a + random.randint(-100, 100)
+            y = b + random.randint(-100, 100)
+
+            self.active_waypoint = (x, y)
+            self.rotate()
+        else:
+            self.active_waypoint = (self.coord_x, self.coord_y)
+            self.orbit_mode = False
+
+    def orbit_target_2(self):
         r = 120
         a = self.target.x + self.target.w/2
         b = self.target.y + self.target.h/2
@@ -157,8 +188,6 @@ class Player(pygame.sprite.Sprite):
         elif self.ship_collision is True:
             self.change_wp_upon_collision()    # generates random waypoint to avoid collision state with another object
 
-
-
     def bump(self):
         for ship in self.list_of_ships:
             for item in ship.sprites():
@@ -182,6 +211,11 @@ class Player(pygame.sprite.Sprite):
         self.rotate()
         self.ship_collision = False
 
-    def update(self):
+    def check_if_target_lives(self):
+        if self.target_object is not None and self.target_object.hitpoints <= 0:
+            self.target = None
+            self.target_object = None
 
+    def update(self):
+        self.check_if_target_lives()
         self.go_to_waypoint()
