@@ -4,6 +4,7 @@ import itertools
 from ship_class import Ship
 from asteroid_class import Asteroid
 from projectile_class import Projectile
+from station_class import Station
 
 pygame.init()
 window_width = 1200
@@ -16,26 +17,16 @@ list_of_asteroids = []
 list_of_projectiles = []
 active_ships = []
 scroll = [0, 0]
+ctrl_group_1 = []
+ctrl_group_2 = []
+ctrl_group_3 = []
+ctrl_group_4 = []
+ctrl_group_5 = []
 scrolled_distance_x = 0
 scrolled_distance_y = 0
 ### For event loop ###
 object_detected = False
 ######################
-
-
-class Station(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        self.x_coord, self.y_coord = x, y
-        super().__init__()
-        self.image = pygame.image.load(r'graphics\spacestation\WB_baseu3_d0.png').convert_alpha()
-        self.image = pygame.transform.scale(self.image, (150, 150))
-        self.rect = self.image.get_rect(center=(self.x_coord, self.y_coord))
-
-    def move(self):
-        pass
-
-    def update(self):
-        pass
 
 
 # To be replaced with dynamic ship generation.
@@ -73,18 +64,18 @@ def projectile_generator(x, y, target, target_object):
     shot = pygame.sprite.GroupSingle(Projectile(x, y, target, target_object))
     list_of_projectiles.append(shot)
 
+
 asteroid_generator()
 ship_generator()
 add_ship_list_to_ships()
 
-
 """TEST"""
 
 station = pygame.sprite.GroupSingle()
-station.add(Station(window_width/3, window_height/2))
+station.add(Station(window_width / 3, window_height / 2))
 
 station2 = pygame.sprite.GroupSingle()
-station2.add(Station(window_width/2, (window_height/2)*-1))
+station2.add(Station(window_width / 2, (window_height / 2) * -1))
 
 """TEST"""
 
@@ -106,12 +97,18 @@ def main():
         screen_scrolling()
         # Resets object_detected to false value for every frame.
         object_detected = False
-
+        waypoint_generator()
         # Event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1 and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                    populate_ctrl_1()
+                elif event.key == pygame.K_1:
+                    activate_ctrl_1()
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 if pygame.key.get_mods() & pygame.KMOD_SHIFT:
@@ -129,8 +126,11 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 click_pos = event.pos
-                collision_check(click_pos)
+                # Deactivates already selected ships to avoid
+                #deactivate_active_ships()
+                #active_ships.clear()
 
+                collision_check(click_pos)
                 selection_box_start = click_pos
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -153,7 +153,7 @@ def main():
         station2.draw(screen)
         #################
         pygame.display.update()
-        clock.tick(60)  # <-- ogranicza program do 60 fps
+        clock.tick(60)  # <-- limits program to 60 fps
 
 
 # Takes all objects and draws then on the screen in each frame.
@@ -203,21 +203,13 @@ def add_scroll_to_ship_pos():
             ship_sprite.coord_y -= int_scroll_y
             ship_sprite.rect.x -= int_scroll_x
             ship_sprite.rect.y -= int_scroll_y
-            # maybe tuple instead of rect for target?
+
             if ship_sprite.target is not None:
                 new_x = ship_sprite.target[0]
                 new_y = ship_sprite.target[1]
                 new_x -= int_scroll_x
                 new_y -= int_scroll_y
                 ship_sprite.target = (new_x, new_y)
-                #print(ship_sprite.target.x)
-            '''if ship_sprite.target is not None:
-                target_x = ship_sprite.target.x
-                target_y = ship_sprite.target.y
-                target_x += int_scroll_x
-                target_y += int_scroll_y
-                ship_sprite.target.x = target_x
-                ship_sprite.target.y = target_y'''
 
             # Ship waypoints update
             new_waypoints = []
@@ -231,7 +223,7 @@ def add_scroll_to_ship_pos():
             ship_sprite.waypoints = new_waypoints
             if ship_sprite.active_waypoint is not None:
                 ship_sprite.active_waypoint = ((ship_sprite.active_waypoint[0] - int_scroll_x),
-                                                  (ship_sprite.active_waypoint[1] - int_scroll_y))
+                                               (ship_sprite.active_waypoint[1] - int_scroll_y))
 
     for asteroid_object in list_of_asteroids:
         for asteroid_rectangle in asteroid_object.sprites():
@@ -309,6 +301,7 @@ def collision_check(rect):
             for item in ship.sprites():
                 if item.rect.colliderect(rect):
                     item.activate_ship()
+                    active_ships.append(item)
 
                 else:
                     item.deactivate_ship()
@@ -321,7 +314,31 @@ def populate_active_ship_list():
                 active_ships.append(ship_sprite)
 
 
+
+
 '''''''''SUPPORTING FUNCTIONS'''''''''''
+
+
+def populate_ctrl_1():
+    global ctrl_group_1
+    ctrl_group_1.clear()
+    ctrl_group_1 = active_ships.copy()
+
+
+def activate_ctrl_1():
+    global active_ships
+    deactivate_active_ships()
+    active_ships.clear()
+    for ship in ctrl_group_1:
+        ship.active = True
+    active_ships = ctrl_group_1.copy()
+    print(active_ships)
+
+
+def deactivate_active_ships():
+    for ship in active_ships:
+        if ship.active is True:
+            ship.active = False
 
 # Function checks if clicked object is a valid target (present in one of the list within list_chain).
 def check_for_targetable_object(click_pos):
@@ -337,6 +354,7 @@ def check_for_targetable_object(click_pos):
                 # Passes the rect of the target object to ship.
                 pass_target_to_active_ships(item_sprite.rect, item_sprite)
                 object_detected = True
+
 
 '''    for asteroid in list_of_asteroids:
         for asteroid_sprite in asteroid.sprites():
@@ -392,6 +410,17 @@ def screen_scrolling():
         scroll = [0, 0]
 
 
-if __name__ == "__main__":
+# Generates waypoint for red ships (targets)
+def waypoint_generator():
+    for ship in list_of_red_ship:
+        for ship_sprite in ship.sprites():
+            if ship_sprite.active_waypoint is None:
+                x = random.randint(0, window_width)
+                y = random.randint(0, window_height)
+                waypoint = (x, y)
+                ship_sprite.new_waypoint(waypoint)
+                ship_sprite.waypoints.append(waypoint)
 
+
+if __name__ == "__main__":
     main()

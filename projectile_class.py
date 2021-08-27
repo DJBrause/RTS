@@ -8,7 +8,7 @@ class Projectile(pygame.sprite.Sprite):
         self.initial_coord_x, self.initial_coord_y = self.coord_x, self.coord_y
         self.target_object = target_object
         self.target = (target[0] + random.randint(0, 5), target[1] + random.randint(0, 5))
-        self.speed = 10
+        self.speed = 20
         self.rotated = False
         self.target_hit = False
         super().__init__()
@@ -51,7 +51,7 @@ class Projectile(pygame.sprite.Sprite):
             self.coord_y += mov_y
         elif self.distance <= 0 and self.explosion_end is False:
             if self.target_hit is False:
-                self.target_object.hitpoints -= 50
+                self.target_object.hitpoints -= 5
                 self.target_hit = True
             self.explosion_animation()
 

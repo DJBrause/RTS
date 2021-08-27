@@ -14,7 +14,7 @@ class Ship(pygame.sprite.Sprite):
         self.ship_collision = False
         self.list_of_ships = []
         self.waypoints = []
-        self.max_range = 300
+        self.max_range = 100
         self.side = side
         self.dist = None
         self.target_object = None
@@ -24,9 +24,10 @@ class Ship(pygame.sprite.Sprite):
         self.orbit_sector = 0
         self.orbit_mode = False
         self.shot_interval = 0
+        self.timer = 0
         super().__init__()
         self.og_image_blue = pygame.image.load(r'graphics\fighter.png').convert_alpha()
-        self.og_image_red = pygame.image.load(r'graphics\x_wing.png').convert_alpha()
+        self.og_image_red = pygame.image.load(r'graphics\red_fighter.png').convert_alpha()
         self.image = self.image_choice()
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
@@ -91,7 +92,7 @@ class Ship(pygame.sprite.Sprite):
         if self.active_waypoint is not None and self.target_reached is False:
             self.check_distance(self.active_waypoint)
             limit = 1200
-            reduction = 50
+            reduction = 100
             wp_vicinity = 30
 
             '''dopracować'''
@@ -101,6 +102,7 @@ class Ship(pygame.sprite.Sprite):
             if distance > limit:
                 reduction += (abs(distance)-limit)
             ''''''
+
             # if not near the destination, continue moving
             if self.dist > wp_vicinity:
                 self.moving_to_wp = True
@@ -117,6 +119,8 @@ class Ship(pygame.sprite.Sprite):
                         self.go_to_next_wp()
                 else:
                     self.orbit_target()
+
+
 
         self.rect = self.image.get_rect(center=(self.coord_x, self.coord_y))
 
@@ -211,11 +215,15 @@ class Ship(pygame.sprite.Sprite):
         self.rotate()
         self.ship_collision = False
 
-    def check_if_target_lives(self):
-        if self.target_object is not None and self.target_object.hitpoints <= 0:
+    def update_target(self):
+        if self.target_object is not None and self.target_object.hitpoints > 0:
+            x = self.target_object.rect.x
+            y = self.target_object.rect.y
+            self.target = (x, y)
+        elif self.target_object is not None and self.target_object.hitpoints <= 0:
             self.target = None
             self.target_object = None
 
     def update(self):
-        self.check_if_target_lives()
+        self.update_target()
         self.go_to_waypoint()
