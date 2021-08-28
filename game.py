@@ -34,14 +34,14 @@ def ship_generator():
     for i in range(5):
         x = random.randint(0, window_width)
         y = random.randint(0, window_height)
-        player = pygame.sprite.GroupSingle()
-        player.add(Ship(x, y, 'blue'))
+        player = pygame.sprite.GroupSingle(Ship(x, y, 'blue'))
+        # player.add()
         list_of_ships.append(player)
     for i in range(10):
         x = random.randint(0, window_width)
         y = random.randint(0, window_height)
-        player = pygame.sprite.GroupSingle()
-        player.add(Ship(x, y, 'red'))
+        player = pygame.sprite.GroupSingle(Ship(x, y, 'red'))
+        # player.add()
         list_of_red_ship.append(player)
 
 
@@ -55,8 +55,8 @@ def asteroid_generator():
     for i in range(50):
         x = random.randint(-window_width, window_width)
         y = random.randint(-window_height, window_height)
-        asteroid = pygame.sprite.GroupSingle()
-        asteroid.add(Asteroid(x, y))
+        asteroid = pygame.sprite.GroupSingle(Asteroid(x, y))
+        # asteroid.add()
         list_of_asteroids.append(asteroid)
 
 
@@ -71,11 +71,9 @@ add_ship_list_to_ships()
 
 """TEST"""
 
-station = pygame.sprite.GroupSingle()
-station.add(Station(window_width / 3, window_height / 2))
+station = pygame.sprite.GroupSingle(Station(window_width / 3, window_height / 2))
 
-station2 = pygame.sprite.GroupSingle()
-station2.add(Station(window_width / 2, (window_height / 2) * -1))
+station2 = pygame.sprite.GroupSingle(Station(window_width / 2, (window_height / 2)))
 
 """TEST"""
 
@@ -92,6 +90,7 @@ def main():
     selection_box_start = None
     selection = None
 
+
     while True:
         screen.blit(background, (0, 0))
         screen_scrolling()
@@ -107,8 +106,12 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1 and pygame.key.get_mods() & pygame.KMOD_CTRL:
                     populate_ctrl_1()
+                elif event.key == pygame.K_2 and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                    populate_ctrl_2()
                 elif event.key == pygame.K_1:
                     activate_ctrl_1()
+                elif event.key == pygame.K_2:
+                    activate_ctrl_2()
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 if pygame.key.get_mods() & pygame.KMOD_SHIFT:
@@ -126,16 +129,16 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 click_pos = event.pos
-                # Deactivates already selected ships to avoid
+
                 #deactivate_active_ships()
                 #active_ships.clear()
 
-                collision_check(click_pos)
+                selection_check(click_pos)
                 selection_box_start = click_pos
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 if selection is not None:
-                    collision_check(selection)
+                    selection_check(selection)
                     selection = None
 
         if pygame.mouse.get_pressed(num_buttons=3) == (1, 0, 0):
@@ -152,6 +155,9 @@ def main():
         station.draw(screen)
         station2.draw(screen)
         #################
+        print(active_ships)
+
+
         pygame.display.update()
         clock.tick(60)  # <-- limits program to 60 fps
 
@@ -287,24 +293,31 @@ def move_to_target(click_pos):
                     ship.target = (asteroid_obj.rect.x, asteroid_obj.rect.y)
 
 
-def collision_check(rect):
-    if type(rect) == tuple:
-        for ship in list_of_ships:
-            for item in ship.sprites():
-                if item.rect.collidepoint(rect):
-                    item.activate_ship()
-                else:
-                    item.deactivate_ship()
+'''''''''SUPPORTING FUNCTIONS'''''''''''
 
-    elif type(rect) == pygame.Rect:
+
+def selection_check(selection):
+    if type(selection) == tuple:
         for ship in list_of_ships:
             for item in ship.sprites():
-                if item.rect.colliderect(rect):
+                if item.rect.collidepoint(selection):
                     item.activate_ship()
-                    active_ships.append(item)
 
                 else:
                     item.deactivate_ship()
+                    active_ships.clear()
+                populate_active_ship_list()
+
+    elif type(selection) == pygame.Rect:
+        for ship in list_of_ships:
+            for item in ship.sprites():
+                if item.rect.colliderect(selection):
+                    item.activate_ship()
+
+                else:
+                    item.deactivate_ship()
+                    active_ships.clear()
+                populate_active_ship_list()
 
 
 def populate_active_ship_list():
@@ -314,15 +327,22 @@ def populate_active_ship_list():
                 active_ships.append(ship_sprite)
 
 
-
-
-'''''''''SUPPORTING FUNCTIONS'''''''''''
+def deactivate_active_ships():
+    for ship in active_ships:
+        if ship.active is True:
+            ship.active = False
 
 
 def populate_ctrl_1():
     global ctrl_group_1
     ctrl_group_1.clear()
     ctrl_group_1 = active_ships.copy()
+
+
+def populate_ctrl_2():
+    global ctrl_group_2
+    ctrl_group_2.clear()
+    ctrl_group_2 = active_ships.copy()
 
 
 def activate_ctrl_1():
@@ -332,13 +352,16 @@ def activate_ctrl_1():
     for ship in ctrl_group_1:
         ship.active = True
     active_ships = ctrl_group_1.copy()
-    print(active_ships)
 
 
-def deactivate_active_ships():
-    for ship in active_ships:
-        if ship.active is True:
-            ship.active = False
+def activate_ctrl_2():
+    global active_ships
+    deactivate_active_ships()
+    active_ships.clear()
+    for ship in ctrl_group_2:
+        ship.active = True
+    active_ships = ctrl_group_2.copy()
+
 
 # Function checks if clicked object is a valid target (present in one of the list within list_chain).
 def check_for_targetable_object(click_pos):
@@ -354,14 +377,6 @@ def check_for_targetable_object(click_pos):
                 # Passes the rect of the target object to ship.
                 pass_target_to_active_ships(item_sprite.rect, item_sprite)
                 object_detected = True
-
-
-'''    for asteroid in list_of_asteroids:
-        for asteroid_sprite in asteroid.sprites():
-            if asteroid_sprite.rect.collidepoint(click_pos):
-                # Passes the rect of the target object to ship.
-                pass_target_to_active_ships(asteroid_sprite.rect)
-                object_detected = True'''
 
 
 def pass_target_to_active_ships(target, target_object):
